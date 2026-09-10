@@ -9,6 +9,7 @@ import { ServerStatusModule } from './server-status/server-status.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { GameplayModule } from './gameplay/gameplay.module';
+import { DevicesModule } from './devices/devices.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -40,6 +41,7 @@ import { DatabaseModule } from './database/database.module';
     LeaderboardModule,
     AnnouncementsModule,
     GameplayModule,
+    DevicesModule,
   ],
 })
 export class AppModule {}

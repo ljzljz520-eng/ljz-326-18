@@ -1,10 +1,12 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Post, Body, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('认证')
 @Controller('auth')
@@ -18,9 +20,18 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: '用户登录' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @ApiOperation({ summary: '用户登录（可勾选信任此设备）' })
+  login(@Body() loginDto: LoginDto, @Req() req: any) {
+    return this.authService.login(loginDto, req);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '退出登录（current=仅当前设备，all=全部设备）' })
+  logout(@Req() req: any, @Body() logoutDto: LogoutDto) {
+    const scope = logoutDto.scope || 'current';
+    return this.authService.logout(req.user.id, req.user.deviceUuid, scope);
   }
 
   @Get('verify-email')

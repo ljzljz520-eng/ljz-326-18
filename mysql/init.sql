@@ -32,6 +32,26 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 可信设备/登录会话表
+CREATE TABLE IF NOT EXISTS trusted_devices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  userId INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  trusted BOOLEAN DEFAULT FALSE,
+  ip VARCHAR(45),
+  userAgent VARCHAR(128),
+  lastLoginAt DATETIME,
+  expiresAt DATETIME,
+  revokedAt DATETIME,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user (userId),
+  INDEX idx_uuid (uuid),
+  INDEX idx_active (revokedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 新闻表
 CREATE TABLE IF NOT EXISTS news (
   id INT AUTO_INCREMENT PRIMARY KEY,

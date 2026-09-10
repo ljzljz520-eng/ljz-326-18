@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { userApi } from '@/lib/api';
 import GlassCard from '@/components/GlassCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import TrustedDevices from '@/components/TrustedDevices';
 import { formatTime, formatDate } from '@/lib/utils';
 
 export default function ProfilePage() {
@@ -185,6 +186,11 @@ export default function ProfilePage() {
               )}
             </GlassCard>
           </div>
+
+          {/* 可信设备管理 */}
+          <GlassCard className="p-6 mt-8" hover={false}>
+            <TrustedDevices />
+          </GlassCard>
         </motion.div>
       </div>
     </div>

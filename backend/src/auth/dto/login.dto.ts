@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsOptional, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, IsBoolean, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ description: '邮箱', example: 'player@example.com' })
@@ -12,8 +12,14 @@ export class LoginDto {
   @IsString()
   password: string;
 
-  @ApiProperty({ description: '记住我', required: false })
+  @ApiPropertyOptional({ description: '信任此设备（30天内免登录）' })
   @IsOptional()
   @IsBoolean()
   rememberMe?: boolean;
+
+  @ApiPropertyOptional({ description: '自定义设备名称（勾选信任设备时生效）', example: '我的游戏电脑' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  deviceName?: string;
 }

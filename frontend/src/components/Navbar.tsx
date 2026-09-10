@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
+import LogoutModal from './LogoutModal';
 
 const navLinks = [
   { href: '/', label: '首页' },
@@ -17,9 +19,11 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuthStore();
 
   useEffect(() => {
@@ -30,9 +34,19 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const openLogout = () => {
     setShowUserMenu(false);
+    setIsOpen(false);
+    setLogoutModalOpen(true);
+  };
+
+  const handleLogout = async (scope: 'current' | 'all') => {
+    await logout(scope);
+    setLogoutModalOpen(false);
+    toast.success(scope === 'all' ? '已退出全部设备' : '已退出登录');
+    if (pathname?.startsWith('/profile') || (pathname === '/admin' && user?.role !== 'admin')) {
+      router.push('/');
+    }
   };
 
   return (
@@ -116,7 +130,7 @@ export default function Navbar() {
                         <span>个人中心</span>
                       </Link>
                       <button
-                        onClick={handleLogout}
+                        onClick={openLogout}
                         className="w-full flex items-center space-x-2 px-4 py-3 text-red-400 hover:bg-white/10 transition-colors"
                       >
                         <LogOut size={16} />
@@ -199,10 +213,7 @@ export default function Navbar() {
                       个人中心
                     </Link>
                     <button
-                      onClick={() => {
-                        handleLogout();
-                        setIsOpen(false);
-                      }}
+                      onClick={openLogout}
                       className="w-full text-left px-4 py-3 text-red-400"
                     >
                       退出登录
@@ -231,6 +242,12 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LogoutModal
+        isOpen={logoutModalOpen}
+        onCancel={() => setLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+      />
     </nav>
   );
 }

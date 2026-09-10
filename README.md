@@ -102,10 +102,19 @@ taskId326/
 
 ### 认证接口
 - `POST /auth/register` - 用户注册
-- `POST /auth/login` - 用户登录
+- `POST /auth/login` - 用户登录（支持 `rememberMe` 信任此设备与可选 `deviceName`）
+- `POST /auth/logout` - 退出登录（body: `{ "scope": "current" | "all" }`，需登录）
 - `POST /auth/forgot-password` - 忘记密码
 - `POST /auth/reset-password` - 重置密码
 - `GET /auth/verify-email` - 邮箱验证
+
+### 可信设备接口（需登录）
+- `GET /devices` - 当前账户的有效设备列表（名称、IP、最后登录时间、是否当前设备）
+- `PATCH /devices/:id` - 重命名自己的设备
+- `DELETE /devices/:id` - 移除（下线）自己的设备
+- `GET /devices/admin/all` - 全部设备列表（管理员）
+- `GET /devices/admin/users/:userId` - 指定用户的设备（管理员）
+- `DELETE /devices/admin/:id` - 移除任意设备（管理员）
 
 ### 用户接口
 - `GET /users/profile` - 获取当前用户信息

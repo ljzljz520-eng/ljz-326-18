@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  Users, Newspaper, HelpCircle, Bell, Gamepad2, 
-  Server, Plus, Trash2, Edit, Eye, EyeOff 
+import {
+  Users, Newspaper, HelpCircle, Bell, Gamepad2,
+  Server, Plus, Trash2, Edit, Eye, EyeOff, MonitorSmartphone, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
-import { userApi, newsApi, qaApi, announcementApi, gameplayApi } from '@/lib/api';
+import { userApi, newsApi, qaApi, announcementApi, gameplayApi, deviceApi } from '@/lib/api';
 import GlassCard from '@/components/GlassCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ConfirmModal from '@/components/ConfirmModal';
+import { formatDateTime } from '@/lib/utils';
 
-type TabType = 'users' | 'news' | 'qa' | 'announcements' | 'gameplay';
+type TabType = 'users' | 'news' | 'qa' | 'announcements' | 'gameplay' | 'devices';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -53,6 +54,9 @@ export default function AdminPage() {
         case 'gameplay':
           result = await gameplayApi.getAll(true);
           break;
+        case 'devices':
+          result = await deviceApi.listAll();
+          break;
       }
       setData(result || []);
     } catch (error) {
@@ -85,6 +89,9 @@ export default function AdminPage() {
         case 'gameplay':
           await gameplayApi.delete(deleteTargetId);
           break;
+        case 'devices':
+          await deviceApi.removeAsAdmin(deleteTargetId);
+          break;
       }
       toast.success('删除成功');
       fetchData();
@@ -107,6 +114,7 @@ export default function AdminPage() {
     { id: 'qa', label: '问答管理', icon: HelpCircle },
     { id: 'announcements', label: '公告管理', icon: Bell },
     { id: 'gameplay', label: '玩法管理', icon: Gamepad2 },
+    { id: 'devices', label: '设备管理', icon: MonitorSmartphone },
   ];
 
   if (!isAuthenticated || user?.role !== 'admin') {
@@ -288,6 +296,78 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* 设备列表 */}
+                {activeTab === 'devices' && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">ID</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">设备名称</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">所属玩家</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">IP</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">最后登录</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">状态</th>
+                          <th className="text-left py-3 px-4 text-gray-400 font-medium">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.map((item: any) => {
+                          const isActive = !item.revokedAt && (!item.expiresAt || new Date(item.expiresAt) > new Date());
+                          return (
+                            <tr key={item.id} className="border-b border-white/5 hover:bg-white/5">
+                              <td className="py-3 px-4 text-white">{item.id}</td>
+                              <td className="py-3 px-4 text-white">
+                                <div className="flex items-center gap-2">
+                                  <span>{item.name}</span>
+                                  {item.trusted && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-minecraft-green/20 text-minecraft-green text-xs rounded-full">
+                                      <ShieldCheck size={10} />
+                                      可信
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-gray-300">
+                                {item.user ? (
+                                  <div>
+                                    <p className="text-white">{item.user.username}</p>
+                                    <p className="text-xs text-gray-500">{item.user.email}</p>
+                                  </div>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-gray-300 font-mono text-sm">{item.ip || '—'}</td>
+                              <td className="py-3 px-4 text-gray-300 whitespace-nowrap">{formatDateTime(item.lastLoginAt)}</td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  isActive
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {isActive ? '有效' : item.revokedAt ? '已移除' : '已过期'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                {isActive && (
+                                  <button
+                                    onClick={() => handleDeleteClick(item.id)}
+                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                                    title="移除设备（强制下线）"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 

@@ -2,16 +2,23 @@ import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
+import { DevicesService } from '../devices/devices.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { parseDeviceName, getClientIp, fingerprint } from './utils/device.util';
+
+// 可信设备 30 天免登录；普通会话 12 小时
+const TRUSTED_TTL_SECONDS = 30 * 24 * 60 * 60;
+const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private devicesService: DevicesService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -32,18 +39,47 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, req?: any) {
     const user = await this.validateUser(loginDto.email, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('邮箱或密码错误');
     }
-    
+
     await this.usersService.updateLastLogin(user.id);
-    
-    const payload = { email: user.email, sub: user.id, role: user.role };
+
+    const trusted = !!loginDto.rememberMe;
+    const userAgent = fingerprint(req?.headers?.['user-agent'] || 'unknown');
+    const defaultName = parseDeviceName(req?.headers?.['user-agent'] || '');
+    const deviceName =
+      trusted && loginDto.deviceName?.trim()
+        ? loginDto.deviceName.trim().slice(0, 100)
+        : defaultName;
+    const ip = getClientIp(req);
+    const ttlSeconds = trusted ? TRUSTED_TTL_SECONDS : SESSION_TTL_SECONDS;
+
+    // 创建设备会话（可信设备同一浏览器会复用原记录）
+    const device = await this.devicesService.createOnLogin({
+      userId: user.id,
+      name: deviceName,
+      trusted,
+      ip,
+      userAgent,
+      ttlSeconds,
+    });
+
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+      did: device.uuid,
+    };
+
     return {
       message: '登录成功',
-      accessToken: this.jwtService.sign(payload),
+      accessToken: this.jwtService.sign(payload, { expiresIn: ttlSeconds }),
+      trusted,
+      deviceUuid: device.uuid,
+      expiresIn: ttlSeconds,
       user: {
         id: user.id,
         username: user.username,
@@ -53,6 +89,20 @@ export class AuthService {
         avatar: user.avatar,
       },
     };
+  }
+
+  /**
+   * 退出登录
+   * - current：仅作废当前设备的会话
+   * - all：作废该账户所有设备会话
+   */
+  async logout(userId: number, deviceUuid: string | undefined, scope: 'current' | 'all') {
+    if (scope === 'all') {
+      await this.devicesService.revokeAllForUser(userId);
+    } else {
+      await this.devicesService.revokeByUuid(deviceUuid || '');
+    }
+    return { message: scope === 'all' ? '已退出全部设备' : '已退出当前设备' };
   }
 
   async verifyEmail(token: string) {
