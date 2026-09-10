@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, MonitorSmartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authApi } from '@/lib/api';
+import { getClientDeviceId } from '@/lib/clientDeviceId';
 import { useAuthStore } from '@/store/authStore';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -46,6 +47,7 @@ export default function LoginPage() {
         password: data.password,
         rememberMe: trusted,
         deviceName: trusted ? data.deviceName?.trim() || undefined : undefined,
+        clientDeviceId: getClientDeviceId(),
       });
       setAuth(
         response.user,

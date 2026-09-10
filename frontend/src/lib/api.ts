@@ -72,7 +72,7 @@ const request = {
 export const authApi = {
   register: (data: { username: string; email: string; password: string; minecraftUsername?: string }) =>
     request.post('/auth/register', data),
-  login: (data: { email: string; password: string; rememberMe?: boolean; deviceName?: string }) =>
+  login: (data: { email: string; password: string; rememberMe?: boolean; deviceName?: string; clientDeviceId?: string | null }) =>
     request.post<LoginResponse>('/auth/login', data),
   logout: (scope: 'current' | 'all' = 'current') =>
     request.post<{ message: string }>(

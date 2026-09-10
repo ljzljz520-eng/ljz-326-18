@@ -57,13 +57,21 @@ export class AuthService {
     const ip = getClientIp(req);
     const ttlSeconds = trusted ? TRUSTED_TTL_SECONDS : SESSION_TTL_SECONDS;
 
-    // 创建设备会话（可信设备同一浏览器会复用原记录）
+    // 客户端稳定设备标识：仅接受格式合法的值，其余视为未提供（新建会话记录）
+    const clientId =
+      typeof loginDto.clientDeviceId === 'string' &&
+      /^[A-Za-z0-9-]{8,64}$/.test(loginDto.clientDeviceId)
+        ? loginDto.clientDeviceId
+        : null;
+
+    // 创建设备会话（可信设备按 clientId 复用记录并轮换会话标识）
     const device = await this.devicesService.createOnLogin({
       userId: user.id,
       name: deviceName,
       trusted,
       ip,
       userAgent,
+      clientId,
       ttlSeconds,
     });
 

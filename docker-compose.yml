@@ -41,6 +41,10 @@ services:
       - DATABASE_NAME=minecraft_server
       - JWT_SECRET=minecraft_jwt_secret_key_2024
       - PORT=8000
+      # 受信代理配置：仅当后端部署在反向代理之后时设置，用于正确解析客户端真实 IP。
+      # 未设置时不信任任何 X-Forwarded-For 头（防止客户端伪造 IP）。
+      # 示例：代理与后端同机部署用 "1"；或填代理 IP/CIDR，如 "127.0.0.1,10.0.0.0/8"
+      # - TRUST_PROXY=1
     depends_on:
       mysql:
         condition: service_healthy

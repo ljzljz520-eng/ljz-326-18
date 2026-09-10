@@ -22,4 +22,10 @@ export class LoginDto {
   @IsString()
   @MaxLength(100)
   deviceName?: string;
+
+  @ApiPropertyOptional({ description: '客户端生成并持久保存的稳定设备标识（用于可信设备记录复用）' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  clientDeviceId?: string;
 }

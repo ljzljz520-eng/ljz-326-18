@@ -21,8 +21,24 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // 反向代理后正确解析客户端真实 IP（X-Forwarded-For）
-  app.set('trust proxy', true);
+  // 客户端真实 IP 解析（X-Forwarded-For）：
+  // 绝不能无条件信任代理头，否则客户端可伪造 X-Forwarded-For 污染审计日志。
+  // 通过 TRUST_PROXY 环境变量显式声明受信代理：
+  //   - 未设置：不信任任何代理头，直接使用 TCP 连接对端地址（fail-closed）
+  //   - 数字（如 "1"）：信任的代理跳数
+  //   - 逗号分隔的 IP/CIDR（如 "127.0.0.1,10.0.0.0/8"）：仅信任来自这些地址的代理头
+  const trustProxyEnv = process.env.TRUST_PROXY?.trim();
+  if (trustProxyEnv) {
+    const hops = Number(trustProxyEnv);
+    app.set(
+      'trust proxy',
+      Number.isNaN(hops)
+        ? trustProxyEnv.split(',').map((s) => s.trim()).filter(Boolean)
+        : hops,
+    );
+  } else {
+    app.set('trust proxy', false);
+  }
 
   // 启用CORS
   app.enableCors({

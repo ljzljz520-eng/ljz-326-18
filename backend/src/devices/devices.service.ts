@@ -10,6 +10,8 @@ export interface CreateDeviceInput {
   trusted: boolean;
   ip: string | null;
   userAgent: string;
+  // 客户端生成并持久保存的稳定设备标识；为空时一律新建会话记录
+  clientId?: string | null;
   ttlSeconds: number;
 }
 
@@ -22,26 +24,32 @@ export class DevicesService {
 
   /**
    * 登录时创建（或复用）一个设备会话。
-   * 勾选“信任此设备”且同一浏览器指纹已有有效可信设备时，复用原记录，
-   * 避免设备列表因反复登录而膨胀。
+   * 仅在客户端提供了稳定设备标识（clientId）且勾选“信任此设备”时，
+   * 才按 (userId, clientId) 复用记录，避免设备列表因反复登录而膨胀。
+   * 复用时会轮换 uuid（旧 JWT 立即失效）；绝不按 User-Agent 复用，
+   * 否则相同浏览器/UA 的多台设备会共享同一条会话记录，
+   * 导致移除/退出其中一台时另一台被一并强制下线。
    */
   async createOnLogin(input: CreateDeviceInput): Promise<TrustedDevice> {
     const now = new Date();
 
-    if (input.trusted) {
+    if (input.trusted && input.clientId) {
       const existing = await this.devicesRepository
         .createQueryBuilder('d')
         .where('d.userId = :userId', { userId: input.userId })
         .andWhere('d.trusted = :trusted', { trusted: true })
-        .andWhere('d.userAgent = :ua', { ua: input.userAgent })
+        .andWhere('d.clientId = :clientId', { clientId: input.clientId })
         .andWhere('d.revokedAt IS NULL')
         .andWhere('(d.expiresAt IS NULL OR d.expiresAt > :now)', { now })
         .orderBy('d.lastLoginAt', 'DESC')
         .getOne();
 
       if (existing) {
+        // 轮换会话标识：旧 JWT 的 did 立即失效，仅本次登录签发的新令牌可用
+        existing.uuid = uuidv4();
         existing.name = input.name;
         existing.ip = input.ip;
+        existing.userAgent = input.userAgent;
         existing.lastLoginAt = now;
         existing.expiresAt = new Date(now.getTime() + input.ttlSeconds * 1000);
         return this.devicesRepository.save(existing);
@@ -55,6 +63,7 @@ export class DevicesService {
       trusted: input.trusted,
       ip: input.ip,
       userAgent: input.userAgent,
+      clientId: input.clientId ?? null,
       lastLoginAt: now,
       expiresAt: new Date(now.getTime() + input.ttlSeconds * 1000),
       revokedAt: null,

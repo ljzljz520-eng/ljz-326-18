@@ -38,9 +38,16 @@ export class TrustedDevice {
   @Column({ type: 'varchar', length: 45, nullable: true })
   ip: string | null;
 
-  // 浏览器/操作系统识别指纹，用于复用同一可信设备记录
+  // 浏览器/操作系统信息，仅用于展示与审计，不作为设备复用依据
   @Column({ length: 128, nullable: true })
   userAgent: string;
+
+  // 客户端生成并持久保存的稳定设备标识（每浏览器实例唯一）。
+  // 可信设备按 (userId, clientId) 复用记录，与 UA 无关，
+  // 避免相同浏览器/UA 的多台设备共享同一条会话记录。
+  @Index()
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  clientId: string | null;
 
   @Column({ type: 'datetime', nullable: true })
   lastLoginAt: Date | null;
